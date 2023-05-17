@@ -1,0 +1,2508 @@
+import java.io.*;
+import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Semaphore;
+import java.time.format.DateTimeFormatter;
+class GameTimerTask extends TimerTask {
+    // 设定计时器超时时间为30秒
+    long timeout = 30000;
+    private Timer timer;
+    private long startTime;
+    private final Semaphore pauseSemaphore = new Semaphore(0);
+
+    @Override
+    public void run() {
+        // 在计时器超时时执行的操作，例如判负逻辑
+    }
+
+    public void pause() throws InterruptedException {
+        pauseSemaphore.acquire();
+    }
+
+    public void resetTimer() {
+        cancel(); // 取消当前计时器任务
+
+        // 创建新的计时器任务
+        GameTimerTask newTimerTask = new GameTimerTask();
+        newTimerTask.setTimer(timer); // 传递当前计时器对象
+        timer.schedule(newTimerTask, timeout); // 重新启动计时器任务
+        startTime = System.currentTimeMillis();
+    }
+    public void setTimer(Timer timer) {
+        this.timer = timer;
+    }
+
+    public void resume() {
+        pauseSemaphore.release();
+    }
+    public long getRemainingTime(long timeout) {
+        long elapsedTime = System.currentTimeMillis() - startTime;
+        long remainingTime = timeout - elapsedTime;
+        return Math.max(remainingTime, 0);
+    }
+}
+
+
+public class Main {
+    //要加计时器
+    private static class Origin {
+        int[][] OCB = new int[9][7]; // OCB Original chess board
+        char[][] OCA = new char[9][7];
+        // set the origin chess arrangement OCA
+    }
+
+    public static int Rank(char[] arr, char target) {
+        for (int i = 0; i < arr.length; i++) {
+            if (arr[i] == target) {
+                return i;
+            }
+        }
+        return -1; // target not found in arr
+    }
+
+    static char[] mapping = {'阱', '鼠', '猫', '狗', '狼', '豹', '虎', '狮', '象'};
+    static char[] chessA = {'-', 'r', 'c', 'd', 'w', 'p', 't', 'l', 'e'};
+    static char[] chessB = {'-', 'R', 'C', 'D', 'W', 'P', 'T', 'L', 'E'};
+
+    public static char Name(char c) {
+
+        for (int i = 0; i < chessA.length; i++) {
+            if (c == chessA[i] || c == chessB[i]) {
+                return mapping[i];
+            }
+        }
+        return c;
+    }
+
+    public static void main(String[] args) {
+        // 创建计时器
+        Timer timer = new Timer();
+
+        // 创建计时器任务
+        GameTimerTask timerTask = new GameTimerTask();
+
+        timerTask.setTimer(timer); // 传递计时器对象
+
+        // 设定计时器超时时间为30秒
+        long timeout = 30000;
+
+        timer.schedule(timerTask, timeout);
+
+        outerLoop:while (true) {
+
+            AtomicReference<String> Gameover = new AtomicReference<>("残局");
+
+            // 方
+            StringBuilder direction = new StringBuilder("null");
+
+            // 次
+            StringBuilder level = new StringBuilder("null");
+
+            // 棋子
+            StringBuilder chessPiece = new StringBuilder("null");
+
+            // 操作
+            StringBuilder action = new StringBuilder("null");
+
+            try {
+                File file = new File("cache.txt");//create a cache
+                if (file.exists()) {
+                    FileWriter fw = new FileWriter(file);
+                    fw.write("");
+                    fw.close(); //clear cache if cache is already existing
+                } else {
+                    file.createNewFile(); //create cache if not
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            Scanner scanner = new Scanner(System.in);
+            System.out.print("输入先手名字：");
+            String nameA = scanner.nextLine();
+            System.out.print("输入后手名字：");
+            String nameB = scanner.nextLine();
+
+            LocalDateTime now = LocalDateTime.now();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String currentTime = now.format(formatter);
+            try {
+                FileWriter writer = new FileWriter("cache.txt");
+                writer.write(nameA + " " + nameB + " Start at time : " + currentTime + " " + "\n");
+                //Cache 标准起始行 张三 李四 起始时间
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            // pretreatment
+            // first create an original chess board
+            Origin origin = new Origin(); // create an instance of Origin class
+            origin.OCB[0][2] = 1;//1 trap 2 dens 3 river
+            origin.OCB[0][3] = 2;
+            origin.OCB[0][4] = 1;
+            origin.OCB[1][3] = 1;
+            origin.OCB[3][1] = 3;
+            origin.OCB[3][2] = 3;
+            origin.OCB[3][4] = 3;
+            origin.OCB[3][5] = 3;
+            origin.OCB[4][1] = 3;
+            origin.OCB[4][2] = 3;
+            origin.OCB[4][4] = 3;
+            origin.OCB[4][5] = 3;
+            origin.OCB[5][1] = 3;
+            origin.OCB[5][2] = 3;
+            origin.OCB[5][4] = 3;
+            origin.OCB[5][5] = 3;
+            origin.OCB[7][3] = 1;
+            origin.OCB[8][2] = 1;
+            origin.OCB[8][3] = 2;
+            origin.OCB[8][4] = 1;
+
+            origin.OCA[0][0] = 'L';
+            origin.OCA[0][6] = 'T';
+            origin.OCA[1][1] = 'D';
+            origin.OCA[1][5] = 'C';
+            origin.OCA[2][0] = 'R';
+            origin.OCA[2][2] = 'P';
+            origin.OCA[2][4] = 'W';
+            origin.OCA[2][6] = 'E';
+
+            origin.OCA[6][0] = 'e';
+            origin.OCA[6][2] = 'w';
+            origin.OCA[6][4] = 'p';
+            origin.OCA[6][6] = 'r';
+            origin.OCA[7][1] = 'c';
+            origin.OCA[7][5] = 'd';
+            origin.OCA[8][0] = 't';
+            origin.OCA[8][6] = 'l';
+
+            int Identitycode = 100000;//储存99999步，1为位数
+
+            char[][] OCA = new char[9][7];
+            for (char[] value : OCA) {
+                Arrays.fill(value, 'O');
+            }
+            for (int i = 0; i < OCA.length; i++) {
+                for (int j = 0; j < OCA[i].length; j++) {
+                    if (origin.OCA[i][j] != '\0') {
+                        OCA[i][j] = origin.OCA[i][j];
+                    }
+                }
+            }
+
+            try {
+                FileWriter writer = new FileWriter("cache.txt", true);
+                writer.write(Identitycode + "\n");
+                writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                FileWriter writer = new FileWriter("cache.txt", true);
+                for (char[] chars : OCA) {
+                    for (char aChar : chars) {
+                        writer.write(aChar);
+                    }
+                    writer.write("\n");
+                }
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            Identitycode++;
+
+            //write OCA as the origin arrangement
+            //接下来读取cache形成CCA，进行下一步操作，判定后，保存至cache下一部分，格式是识别码+操作码+棋盘，操作码为用户+操作数+移动的棋子+移动的方
+
+            long remainingTime = timerTask.getRemainingTime(timeout);
+
+            while (true) {
+                int Level = 0;
+
+                Level++;
+
+                char[][] CCA = new char[9][7];//Current chess arrangement
+
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader("cache.txt"));
+                    String linescanner;
+                    while ((linescanner = reader.readLine()) != null) {
+                        if (linescanner.startsWith(String.valueOf(Identitycode - 1))) {
+                            reader.readLine();
+                            for (int i = 0; i < 9; i++) {
+                                String line = reader.readLine();
+                                for (int j = 0; j < 7; j++) {
+                                    CCA[i][j] = line.charAt(j);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                for (int i = 0; i < 9; i++) {
+                    for (int j = 0; j < 7; j++) {
+                        System.out.print(CCA[i][j] + " ");
+                    }
+                    System.out.println();
+                }
+
+                Identitycode++;
+                //read cache to perform CCA
+
+                boolean legal = true;
+                boolean prove = false;
+                boolean inTime = true;
+
+                int n = -1;
+                int m = -1;
+
+                //先手出棋
+                char chosenchess;
+                StringBuilder chosen;
+                StringBuilder Prove;
+                direction = new StringBuilder(nameA);
+
+                timerTask.resetTimer();
+
+                while (!prove && inTime) {
+                    while (legal && inTime) {
+                        //lower moves first, discuss
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("先手出棋");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        //directing chosen chess
+                        chosen = new StringBuilder(scanner.nextLine());
+                        chosenchess = chosen.charAt(0);
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        if (chosen.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (chosen.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        }
+                        else if (chosen.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            inTime = false;
+                            break;
+                        } else if (chosenchess == 'O') {
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("非法棋子，重新输入");
+                        } else {
+                            int count = 0;
+                            for (int i = 0; i < 9; i++) {
+                                for (int j = 0; j < 7; j++) {
+                                    if (chosenchess == CCA[i][j] && Character.isLowerCase(CCA[i][j])) {
+                                        n = i;
+                                        m = j;
+                                        break;
+                                    }
+                                    count++;
+                                }
+                            }
+                            if (count == 63) {
+                                remainingTime = timerTask.getRemainingTime(timeout);
+                                System.out.println("非法棋子，重新输入");
+                            }
+                            if (n != -1) {
+                                legal = false;
+                            }
+                        }
+                    }
+                    if (inTime) {
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("您选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，确定选择了这个棋子？是/否");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                    } else {
+                        break;
+                    }
+
+                    Prove = new StringBuilder(scanner.nextLine());
+                    remainingTime = timerTask.getRemainingTime(timeout);
+                    if (Prove.toString().equals("停止")) {
+                        try {
+                            // 暂停计时器
+                            timerTask.pause();
+                        } catch (InterruptedException e) {
+                            // 处理中断异常
+                        }
+                    } else if (Prove.toString().equals("继续")) {
+                        // 继续计时器
+                        timerTask.resume();
+                    } else if (Prove.toString().equals("重开")) {
+                        System.out.println("玩家要求重新开始");
+                        continue outerLoop; // 跳出外部循环
+                    }else if (remainingTime <= 0) {
+                        // 计时器已超时，执行判负逻辑
+                        Gameover.set("已结束");
+                        inTime = false;
+                        break;
+                    } else if (Prove.toString().equals("是")) {
+                        prove = true;
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("您最终选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，您想怎么做？上/下/左/右");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                    } else {
+                        legal = true;
+                    }
+                    chessPiece = new StringBuilder(Character.toString(Name(CCA[n][m])));
+                }
+
+                legal = true;
+                prove = false;
+                int newX = 0;
+                int newY = 0;
+                char[][] higher;
+
+                while (!prove && inTime) {
+                    label:
+                    while (legal && inTime) {
+
+                        chosen = new StringBuilder(scanner.nextLine());
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        if (chosen.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (chosen.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        } else if (chosen.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            inTime = false;
+                            break;
+                        } else switch (chosen.toString()) {
+                            case "上" -> {
+                                action = chosen;
+                                //界线判定
+                                if (n - 1 < 0) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                }
+                                //地形判定
+                                else if (origin.OCB[n - 1][m] == 3 &&
+                                        Rank(chessA, CCA[n][m]) != 1 &&
+                                        Rank(chessA, CCA[n][m]) != 6 &&
+                                        Rank(chessA, CCA[n][m]) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                }
+
+                                //向上无法进入己方兽穴
+
+                                //对手判定
+                                else if (CCA[n - 1][m] != 'O' &&
+                                        !(Rank(chessA, CCA[n][m]) != 6 &&
+                                                Rank(chessA, CCA[n][m]) != 7 &&
+                                                origin.OCB[n - 1][m] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n - 1][m] == 'e' ||
+                                                    CCA[n - 1][m] == 'l' ||
+                                                    CCA[n - 1][m] == 't' ||
+                                                    CCA[n - 1][m] == 'p' ||
+                                                    CCA[n - 1][m] == 'w' ||
+                                                    CCA[n - 1][m] == 'd' ||
+                                                    CCA[n - 1][m] == 'c' ||
+                                                    CCA[n - 1][m] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    //陷阱特例（向上无法进入自己的陷阱）
+                                    else if (Rank(chessB, CCA[n - 1][m]) == 8 &&
+                                            (Rank(chessA, CCA[n][m]) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n - 1][m]));
+                                        legal = false;
+                                        newX = n - 1;
+                                        newY = m;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessB, CCA[n - 1][m]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n - 1][m]));
+                                        legal = false;
+                                        newX = n - 1;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessB, CCA[n][m]) == 6 ||
+                                        Rank(chessB, CCA[n][m]) == 7) &&
+                                        origin.OCB[n - 1][m] == 3 &&
+                                        CCA[n - 4][m] != 'O') {
+                                    int targetX = n - 4;
+                                    if (
+                                            CCA[targetX][m] == 'e' ||
+                                                    CCA[targetX][m] == 'l' ||
+                                                    CCA[targetX][m] == 't' ||
+                                                    CCA[targetX][m] == 'p' ||
+                                                    CCA[targetX][m] == 'w' ||
+                                                    CCA[targetX][m] == 'd' ||
+                                                    CCA[targetX][m] == 'c' ||
+                                                    CCA[targetX][m] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessB, CCA[targetX][m]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[targetX][m]));
+                                        legal = false;
+                                        newX = targetX;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + (n - 1) + '，' + m + "）处");
+                                    legal = false;
+                                    newX = n - 1;
+                                    newY = m;
+                                }
+                            }
+                            case "下" -> {
+                                action = chosen;
+                                //界线判定
+                                if (n + 1 > 8) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                    //
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n + 1][m] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessA, CCA[n][m]) != 1 &&
+                                        Rank(chessA, CCA[n][m]) != 6 &&
+                                        Rank(chessA, CCA[n][m]) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n + 1 == 8 && m == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+
+                                }
+                                //对手判定
+                                else if (CCA[n + 1][m] != 'O' &&
+                                        !(Rank(chessA, CCA[n][m]) != 6 &&
+                                                Rank(chessA, CCA[n][m]) != 7 &&
+                                                origin.OCB[n + 1][m] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n + 1][m] == 'e' ||
+                                                    CCA[n + 1][m] == 'l' ||
+                                                    CCA[n + 1][m] == 't' ||
+                                                    CCA[n + 1][m] == 'p' ||
+                                                    CCA[n + 1][m] == 'w' ||
+                                                    CCA[n + 1][m] == 'd' ||
+                                                    CCA[n + 1][m] == 'c' ||
+                                                    CCA[n + 1][m] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n + 1 == 8 && m == 2) ||
+                                            (n + 1 == 8 && m == 4) ||
+                                            (n + 1 == 7 && m == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessA, CCA[n + 1][m]) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n + 1][m]));
+                                            legal = false;
+                                            newX = n + 1;
+                                            newY = m;
+                                            break label;
+                                        }
+                                    } else if (Rank(chessB, CCA[n + 1][m]) == 8 &&
+                                            (Rank(chessA, CCA[n][m]) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n + 1][m]));
+                                        legal = false;
+                                        newX = n + 1;
+                                        newY = m;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessB, CCA[n + 1][m]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n + 1][m]));
+                                        legal = false;
+                                        newX = n + 1;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessB, CCA[n][m]) == 6 ||
+                                        Rank(chessB, CCA[n][m]) == 7) &&
+                                        origin.OCB[n + 1][m] == 3 &&
+                                        CCA[n + 4][m] != 'O') {
+                                    int targetX = n + 4;
+                                    if (
+                                            CCA[targetX][m] == 'e' ||
+                                                    CCA[targetX][m] == 'l' ||
+                                                    CCA[targetX][m] == 't' ||
+                                                    CCA[targetX][m] == 'p' ||
+                                                    CCA[targetX][m] == 'w' ||
+                                                    CCA[targetX][m] == 'd' ||
+                                                    CCA[targetX][m] == 'c' ||
+                                                    CCA[targetX][m] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessB, CCA[targetX][m]) <= Rank(chessA, CCA[n][m])) {
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[targetX][m]));
+                                        legal = false;
+                                        newX = targetX;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + (n + 1) + '，' + m + "）处");
+                                    legal = false;
+                                    newX = n + 1;
+                                    newY = m;
+                                }
+                            }
+                            case "左" -> {
+                                action = chosen;
+                                //界线判定
+                                if (m - 1 < 0) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                }
+                                //地形判定
+                                else if (origin.OCB[n][m - 1] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessA, CCA[n][m]) != 1 &&
+                                        Rank(chessA, CCA[n][m]) != 6 &&
+                                        Rank(chessA, CCA[n][m]) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n == 8 && m - 1 == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+
+                                }  //向上无法进入己方兽穴
+
+                                //对手判定
+                                else if (CCA[n][m - 1] != 'O' &&
+                                        !(Rank(chessA, CCA[n][m]) != 6 &&
+                                                Rank(chessA, CCA[n][m]) != 7 &&
+                                                origin.OCB[n][m - 1] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n][m - 1] == 'e' ||
+                                                    CCA[n][m - 1] == 'l' ||
+                                                    CCA[n][m - 1] == 't' ||
+                                                    CCA[n][m - 1] == 'p' ||
+                                                    CCA[n][m - 1] == 'w' ||
+                                                    CCA[n][m - 1] == 'd' ||
+                                                    CCA[n][m - 1] == 'c' ||
+                                                    CCA[n][m - 1] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n == 8 && m - 1 == 2) ||
+                                            (n == 8 && m - 1 == 4) ||
+                                            (n == 7 && m - 1 == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessA, CCA[n][m - 1]) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                            legal = false;
+                                            newX = n;
+                                            newY = m - 1;
+                                            break label;
+                                        }
+                                    }//无法向上进入己方陷阱
+
+                                    else if (Rank(chessB, CCA[n][m - 1]) == 8 &&
+                                            (Rank(chessA, CCA[n][m]) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m - 1;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessB, CCA[n][m - 1]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m - 1;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessB, CCA[n][m]) == 6 ||
+                                        Rank(chessB, CCA[n][m]) == 7) &&
+                                        origin.OCB[n][m - 1] == 3 &&
+                                        CCA[n][m - 3] != 'O') {
+                                    int targetY = m - 3;
+                                    if (
+                                            CCA[n][targetY] == 'e' ||
+                                                    CCA[n][targetY] == 'l' ||
+                                                    CCA[n][targetY] == 't' ||
+                                                    CCA[n][targetY] == 'p' ||
+                                                    CCA[n][targetY] == 'w' ||
+                                                    CCA[n][targetY] == 'd' ||
+                                                    CCA[n][targetY] == 'c' ||
+                                                    CCA[n][targetY] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessB, CCA[n][targetY]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][targetY]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = targetY;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + n + '，' + (m - 1) + "）处");
+                                    legal = false;
+                                    newX = n;
+                                    newY = m - 1;
+                                }
+                            }
+                            case "右" -> {
+                                action = chosen;
+                                //界线判定
+                                if (m + 1 > 6) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                    //
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n][m + 1] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessA, CCA[n][m]) != 1 &&
+                                        Rank(chessA, CCA[n][m]) != 6 &&
+                                        Rank(chessA, CCA[n][m]) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n == 8 && m + 1 == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+
+                                }  //向上无法进入己方兽穴
+
+                                //对手判定
+                                else if (CCA[n][m + 1] != 'O' &&
+                                        !(Rank(chessA, CCA[n][m]) != 6 &&
+                                                Rank(chessA, CCA[n][m]) != 7 &&
+                                                origin.OCB[n][m + 1] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n][m + 1] == 'e' ||
+                                                    CCA[n][m + 1] == 'l' ||
+                                                    CCA[n][m + 1] == 't' ||
+                                                    CCA[n][m + 1] == 'p' ||
+                                                    CCA[n][m + 1] == 'w' ||
+                                                    CCA[n][m + 1] == 'd' ||
+                                                    CCA[n][m + 1] == 'c' ||
+                                                    CCA[n][m + 1] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n == 8 && m + 1 == 2) ||
+                                            (n == 8 && m + 1 == 4) ||
+                                            (n == 7 && m + 1 == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessA, CCA[n][m + 1]) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                            legal = false;
+                                            newX = n;
+                                            newY = m + 1;
+                                            break label;
+                                        }
+                                    }//无法向上进入己方陷阱
+
+                                    else if (Rank(chessB, CCA[n][m + 1]) == 8 &&
+                                            (Rank(chessA, CCA[n][m]) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m + 1;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessB, CCA[n][m + 1]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m + 1;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessB, CCA[n][m]) == 6 ||
+                                        Rank(chessB, CCA[n][m]) == 7) &&
+                                        origin.OCB[n][m + 1] == 3 &&
+                                        CCA[n][m + 3] != 'O') {
+                                    int targetY = m + 3;
+                                    if (
+                                            CCA[n][targetY] == 'e' ||
+                                                    CCA[n][targetY] == 'l' ||
+                                                    CCA[n][targetY] == 't' ||
+                                                    CCA[n][targetY] == 'p' ||
+                                                    CCA[n][targetY] == 'w' ||
+                                                    CCA[n][targetY] == 'd' ||
+                                                    CCA[n][targetY] == 'c' ||
+                                                    CCA[n][targetY] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessB, CCA[n][targetY]) <= Rank(chessA, CCA[n][m])) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][targetY]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = targetY;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + n + '，' + (m + 1) + "）处");
+                                    legal = false;
+                                    newX = n;
+                                    newY = m + 1;
+                                }
+                            }
+                        }
+                    }
+                    if (inTime) {
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("是否选定此操作？是/否");
+                            System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        }
+
+                        Prove = new StringBuilder(scanner.nextLine());
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        if (Prove.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (Prove.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        } else if (Prove.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            break;
+                        } else if (Prove.toString().equals("是")) {
+                            prove = true;
+                            //将当前棋盘存储到高能级
+                            higher = CCA;
+                            higher[newX][newY] = CCA[n][m];
+                            higher[n][m] = 'O';
+                            //进行棋盘刷新
+                            CCA = higher;
+                            timerTask.cancel();
+                        } else {
+                            legal = true;
+                            prove = false;
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("您最终选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，您想怎么做？上/下/左/右");
+                            System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        }
+                    }
+                //进行输赢判定
+                //Game Termination: A player loses the game if one of the following happens:
+                //The den is entered by his/her opponents.
+                remainingTime = timerTask.getRemainingTime(timeout);
+                if (remainingTime <= 0) {
+                    // 计时器已超时，执行判负逻辑
+                    System.out.println("后手胜利，由于先手时间到了");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    String input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write( '\n' + "后手胜利，由于先手时间到了");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                if (Character.isUpperCase(CCA[8][3]) && CCA[8][3] != 'O') {
+                    System.out.println("后手胜利，由于先手兽穴被攻破");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    String input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write( '\n' + "后手胜利，由于先手兽穴被攻破");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                if (Character.isLowerCase(CCA[0][3])) {
+                    System.out.println("先手胜利，由于后手兽穴被攻破");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    String input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write( '\n' + "先手胜利，由于后手兽穴被攻破");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                //All of his/her pieces are captured and he/her is unable to do any movement
+
+                boolean isValid = true;
+                boolean hasAdjacentLowerCase = false;
+
+                for (int i = 0; i < CCA.length; i++) {
+                    for (int j = 0; j < CCA[i].length; j++) {
+                        char currentChar = CCA[i][j];
+
+                        if (Character.isUpperCase(currentChar) && currentChar != 'O') {
+                            if (!((i == 8 && j == 2) || (i == 7 && j == 3) || (i == 8 && j == 4))) {
+                                isValid = false;
+                            }
+
+                            if ((i - 1 >= 0 && Character.isLowerCase(CCA[i - 1][j]))
+                                    || (i + 1 < CCA.length && Character.isLowerCase(CCA[i + 1][j]))
+                                    || (j - 1 >= 0 && Character.isLowerCase(CCA[i][j - 1]))
+                                    || (j + 1 < CCA[i].length && Character.isLowerCase(CCA[i][j + 1]))) {
+                                hasAdjacentLowerCase = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isValid && hasAdjacentLowerCase) {
+                    System.out.println("先手胜利，由于所有后手棋子被捕获");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    String input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "先手胜利，由于所有后手棋子被捕获");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+
+                isValid = true;
+                boolean hasAdjacentUpperCase = false;
+
+                for (int i = 0; i < CCA.length; i++) {
+                    for (int j = 0; j < CCA[i].length; j++) {
+                        char currentChar = CCA[i][j];
+
+                        if (Character.isLowerCase(currentChar) && currentChar != 'O') {
+                            if (!((i == 8 && j == 2) || (i == 7 && j == 3) || (i == 8 && j == 4))) {
+                                isValid = false;
+                            }
+
+                            if ((i - 1 >= 0 && Character.isUpperCase(CCA[i - 1][j]))
+                                    || (i + 1 < CCA.length && Character.isUpperCase(CCA[i + 1][j]))
+                                    || (j - 1 >= 0 && Character.isUpperCase(CCA[i][j - 1]))
+                                    || (j + 1 < CCA[i].length && Character.isUpperCase(CCA[i][j + 1]))) {
+                                hasAdjacentUpperCase = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isValid && hasAdjacentUpperCase) {
+                    System.out.println("后手胜利，由于所有先手棋子被捕获");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    String input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "后手胜利，由于所有先手棋子被捕获");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                } else {
+                    System.out.println("未分胜负，游戏继续");
+                }
+
+                //存盘
+                level = new StringBuilder(Integer.toString(Level));
+                try {
+                    FileWriter writer = new FileWriter("cache.txt", true);
+                    writer.write(Identitycode + "\n");
+                    writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    FileWriter writer = new FileWriter("cache.txt", true);
+                    for (char[] chars : CCA) {
+                        for (char aChar : chars) {
+                            writer.write(aChar);
+                        }
+                        writer.write("\n");
+                    }
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                Identitycode++;
+
+                System.out.println("将现状固定为存档？存档/否");
+                String input = scanner.nextLine();
+                if (input.equals("存档")) {
+                    LocalDateTime now1 = LocalDateTime.now();
+                    DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    String currentTime1 = now1.format(formatter1);
+                    // 创建新的txt文件并保存游戏状态或其他数据
+                    String fileName = "save_" + ' ' + nameA
+                            + ' ' + nameB
+                            + ' ' + currentTime1
+                            + ' ' + Gameover + ".txt";
+
+                    try {
+                        File file = new File(fileName);
+
+                        if (file.createNewFile()) {
+                            System.out.println("已存档。存档名为： "
+                                    + "save_" + ' ' + nameA
+                                    + ' ' + nameB
+                                    + ' ' + currentTime1
+                                    + ' ' + Gameover + ".txt");
+                        } else {
+                            System.out.println("文件已存在：" + file.getAbsolutePath());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("创建文件时出现错误：" + e.getMessage());
+                    }
+                    try (FileWriter writer = new FileWriter(fileName);
+                         FileReader reader = new FileReader("cache.txt")) {
+                        // 复制 cache.txt 的内容到存档文件中
+                        char[] buffer = new char[2097152];
+                        int bytesRead;
+                        while ((bytesRead = reader.read(buffer)) != -1) {
+                            writer.write(buffer, 0, bytesRead);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                //upper moves then, discuss
+                //System.out.println("后手出棋");
+                //directing chosen chess
+
+                //读盘（后面是一个镜像的过程）
+                try {
+                    BufferedReader reader = new BufferedReader(new FileReader("cache.txt"));
+                    String linescanner;
+                    while ((linescanner = reader.readLine()) != null) {
+                        if (linescanner.startsWith(String.valueOf(Identitycode - 1))) {
+                            reader.readLine();
+                            for (int i = 0; i < 9; i++) {
+                                String line = reader.readLine();
+                                for (int j = 0; j < 7; j++) {
+                                    CCA[i][j] = line.charAt(j);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+
+                for (int i = 0; i < 9; i++) {
+                    for (int j = 0; j < 7; j++) {
+                        System.out.print(CCA[i][j] + " ");
+                    }
+                    System.out.println();
+                }
+
+                //后手出棋
+                prove = false;
+                legal = true;
+                n = -1;
+                m = -1;
+                direction = new StringBuilder(nameB);
+                timerTask.resetTimer();
+                inTime = true;
+
+                while (!prove && inTime) {
+                    while (legal && inTime) {
+                        //lower moves first, discuss
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("后手出棋");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        //directing chosen chess
+
+                        chosen = new StringBuilder(scanner.nextLine());
+                        chosenchess = chosen.charAt(0);
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        if (chosen.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (chosen.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        } else if (chosen.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            inTime = false;
+                            break;
+                        } else if (chosenchess == 'O') {
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("非法棋子，重新输入");
+                        } else {
+                            int count = 0;
+                            for (int i = 0; i < 9; i++) {
+                                for (int j = 0; j < 7; j++) {
+                                    if (chosenchess == CCA[i][j] && Character.isUpperCase(CCA[i][j])) {
+                                        n = i;
+                                        m = j;
+                                        break;
+                                    }
+                                    count++;
+                                }
+                            }
+                            if (count == 63) {
+                                remainingTime = timerTask.getRemainingTime(timeout);
+                                System.out.println("非法棋子，重新输入");
+                            }
+                            if (n != -1) {
+                                legal = false;
+                            }
+                        }
+                    }
+                    if (inTime) {
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("您选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，确定选择了这个棋子？是/否");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                    } else {
+                        break;
+                    }
+
+                    Prove = new StringBuilder(scanner.nextLine());
+                    remainingTime = timerTask.getRemainingTime(timeout);
+                    if (Prove.toString().equals("停止")) {
+                        try {
+                            // 暂停计时器
+                            timerTask.pause();
+                        } catch (InterruptedException e) {
+                            // 处理中断异常
+                        }
+                    } else if (Prove.toString().equals("继续")) {
+                        // 继续计时器
+                        timerTask.resume();
+                    } else if (Prove.toString().equals("重开")) {
+                        System.out.println("玩家要求重新开始");
+                        continue outerLoop; // 跳出外部循环
+                    } else if (remainingTime <= 0) {
+                        // 计时器已超时，执行判负逻辑
+                        Gameover.set("已结束");
+                        inTime = false;
+                        break;
+                    } else if (Prove.toString().equals("是")) {
+                        prove = true;
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        System.out.println("您最终选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，您想怎么做？上/下/左/右");
+                        System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                    } else {
+                        legal = true;
+                    }
+                    chessPiece = new StringBuilder(Character.toString(Name(CCA[n][m])));
+                }
+
+                legal = true;
+                prove = false;
+
+                while (!prove && inTime) {
+                    label:
+                    while (legal && inTime) {
+
+                        chosen = new StringBuilder(scanner.nextLine());
+                        remainingTime = timerTask.getRemainingTime(timeout);
+                        if (chosen.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (chosen.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        } else if (chosen.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            inTime = false;
+                            break;
+                        } else switch (chosen.toString()) {
+                            case "上" -> {
+                                action = chosen;
+                                //界线判定
+                                if (n - 1 < 0) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n - 1][m] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessB, CCA[n][m]) != 1 &&
+                                        Rank(chessB, CCA[n][m]) != 6 &&
+                                        Rank(chessB, CCA[n][m]) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n - 1 == 0 && m == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+                                }
+
+                                //对手判定
+                                else if (CCA[n - 1][m] != 'O' &&
+                                        !(Rank(chessB, (CCA[n][m])) != 6 &&
+                                                Rank(chessB, (CCA[n][m])) != 7 &&
+                                                origin.OCB[n - 1][m] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n - 1][m] == 'E' ||
+                                                    CCA[n - 1][m] == 'L' ||
+                                                    CCA[n - 1][m] == 'T' ||
+                                                    CCA[n - 1][m] == 'P' ||
+                                                    CCA[n - 1][m] == 'W' ||
+                                                    CCA[n - 1][m] == 'D' ||
+                                                    CCA[n - 1][m] == 'C' ||
+                                                    CCA[n - 1][m] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n - 1 == 0 && m == 2) ||
+                                            (n - 1 == 0 && m == 4) ||
+                                            (n - 1 == 1 && m == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessB, (CCA[n - 1][m])) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n - 1][m]));
+                                            legal = false;
+                                            newX = n - 1;
+                                            newY = m;
+                                            break label;
+                                        }
+                                    } else if (Rank(chessA, (CCA[n - 1][m])) == 8 &&
+                                            (Rank(chessB, (CCA[n][m])) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n - 1][m]));
+                                        legal = false;
+                                        newX = n - 1;
+                                        newY = m;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessA, (CCA[n - 1][m])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n - 1][m]));
+                                        legal = false;
+                                        newX = n - 1;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessA, (CCA[n][m])) == 6 ||
+                                        Rank(chessA, (CCA[n][m])) == 7) &&
+                                        origin.OCB[n - 1][m] == 3 &&
+                                        CCA[n - 4][m] != 'O') {
+                                    int targetX = n - 4;
+                                    if (
+                                            CCA[targetX][m] == 'e' ||
+                                                    CCA[targetX][m] == 'l' ||
+                                                    CCA[targetX][m] == 't' ||
+                                                    CCA[targetX][m] == 'p' ||
+                                                    CCA[targetX][m] == 'w' ||
+                                                    CCA[targetX][m] == 'd' ||
+                                                    CCA[targetX][m] == 'c' ||
+                                                    CCA[targetX][m] == 'r'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessA, (CCA[targetX][m])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[targetX][m]));
+                                        legal = false;
+                                        newX = targetX;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + (n - 1) + '，' + m + "）处");
+                                    legal = false;
+                                    newX = n - 1;
+                                    newY = m;
+                                }
+                            }
+                            case "下" -> {
+                                action = chosen;
+                                //界线判定
+                                if (n + 1 > 8) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                    //
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n + 1][m] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessB, (CCA[n][m])) != 1 &&
+                                        Rank(chessB, (CCA[n][m])) != 6 &&
+                                        Rank(chessB, (CCA[n][m])) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (CCA[n + 1][m] != 'O' &&
+                                        !(Rank(chessB, (CCA[n][m])) != 6 &&
+                                                Rank(chessB, (CCA[n][m])) != 7 &&
+                                                origin.OCB[n + 1][m] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n + 1][m] == 'E' ||
+                                                    CCA[n + 1][m] == 'L' ||
+                                                    CCA[n + 1][m] == 'T' ||
+                                                    CCA[n + 1][m] == 'P' ||
+                                                    CCA[n + 1][m] == 'W' ||
+                                                    CCA[n + 1][m] == 'D' ||
+                                                    CCA[n + 1][m] == 'C' ||
+                                                    CCA[n + 1][m] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    //无法向下进入己方陷阱
+
+                                    else if (Rank(chessA, (CCA[n + 1][m])) == 8 &&
+                                            (Rank(chessB, (CCA[n][m])) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n + 1][m]));
+                                        legal = false;
+                                        newX = n + 1;
+                                        newY = m;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessA, (CCA[n + 1][m])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n + 1][m]));
+                                        legal = false;
+                                        newX = n + 1;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessA, (CCA[n][m])) == 6 ||
+                                        Rank(chessA, (CCA[n][m])) == 7) &&
+                                        origin.OCB[n + 1][m] == 3 &&
+                                        CCA[n + 4][m] != 'O') {
+                                    int targetX = n + 4;
+                                    if (
+                                            CCA[targetX][m] == 'E' ||
+                                                    CCA[targetX][m] == 'L' ||
+                                                    CCA[targetX][m] == 'T' ||
+                                                    CCA[targetX][m] == 'P' ||
+                                                    CCA[targetX][m] == 'W' ||
+                                                    CCA[targetX][m] == 'D' ||
+                                                    CCA[targetX][m] == 'C' ||
+                                                    CCA[targetX][m] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessA, (CCA[targetX][m])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[targetX][m]));
+                                        legal = false;
+                                        newX = targetX;
+                                        newY = m;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + (n + 1) + '，' + m + "）处");
+                                    legal = false;
+                                    newX = n + 1;
+                                    newY = m;
+                                }
+                            }
+                            case "左" -> {
+                                action = chosen;
+                                //界线判定
+                                if (m - 1 < 0) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                    //
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n][m - 1] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessB, (CCA[n][m])) != 1 &&
+                                        Rank(chessB, (CCA[n][m])) != 6 &&
+                                        Rank(chessB, (CCA[n][m])) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n == 0 && m - 1 == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+                                }
+
+                                //对手判定
+                                else if (CCA[n][m - 1] != 'O' &&
+                                        !(Rank(chessB, (CCA[n][m])) != 6 &&
+                                                Rank(chessB, (CCA[n][m])) != 7 &&
+                                                origin.OCB[n][m - 1] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n][m - 1] == 'E' ||
+                                                    CCA[n][m - 1] == 'L' ||
+                                                    CCA[n][m - 1] == 'T' ||
+                                                    CCA[n][m - 1] == 'P' ||
+                                                    CCA[n][m - 1] == 'W' ||
+                                                    CCA[n][m - 1] == 'D' ||
+                                                    CCA[n][m - 1] == 'C' ||
+                                                    CCA[n][m - 1] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n == 0 && m - 1 == 2) ||
+                                            (n == 0 && m - 1 == 4) ||
+                                            (n == 1 && m - 1 == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessB, (CCA[n][m - 1])) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                            legal = false;
+                                            newX = n;
+                                            newY = m - 1;
+                                            break label;
+                                        }
+                                    }//无法向下进入己方陷阱
+
+                                    else if (Rank(chessA, (CCA[n][m - 1])) == 8 &&
+                                            (Rank(chessB, (CCA[n][m])) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m - 1;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessA, (CCA[n][m - 1])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m - 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m - 1;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessA, (CCA[n][m])) == 6 ||
+                                        Rank(chessA, (CCA[n][m])) == 7) &&
+                                        origin.OCB[n][m - 1] == 3 &&
+                                        CCA[n][m - 3] != 'O') {
+                                    int targetY = m - 3;
+                                    if (
+                                            CCA[n][targetY] == 'E' ||
+                                                    CCA[n][targetY] == 'L' ||
+                                                    CCA[n][targetY] == 'T' ||
+                                                    CCA[n][targetY] == 'P' ||
+                                                    CCA[n][targetY] == 'W' ||
+                                                    CCA[n][targetY] == 'D' ||
+                                                    CCA[n][targetY] == 'C' ||
+                                                    CCA[n][targetY] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessA, (CCA[n][targetY])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][targetY]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = targetY;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + n + '，' + (m - 1) + "）处");
+                                    legal = false;
+                                    newX = n;
+                                    newY = m - 1;
+                                }
+                            }
+                            case "右" -> {
+                                action = chosen;
+                                //界线判定
+                                if (m + 1 > 6) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("目标位置出界，重新动作");
+                                    //
+
+                                }
+                                //地形判定
+                                else if (origin.OCB[n][m + 1] == 3 && //排出狮子和老虎傍水以待分析
+                                        Rank(chessB, (CCA[n][m])) != 1 &&
+                                        Rank(chessB, (CCA[n][m])) != 6 &&
+                                        Rank(chessB, (CCA[n][m])) != 7) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("所选棋子不能跳入河中，重新动作");
+                                    //除了老鼠之外，不能跳河
+
+                                } else if (n == 0 && m + 1 == 3) {
+                                    remainingTime = timerTask.getRemainingTime(timeout);
+                                    System.out.println("不可进入己方兽穴，重新动作");
+                                    //不能进入自己的兽穴
+                                }
+
+                                //对手判定
+                                else if (CCA[n][m + 1] != 'O' &&
+                                        !(Rank(chessB, (CCA[n][m])) != 6 &&
+                                                Rank(chessB, (CCA[n][m])) != 7 &&
+                                                origin.OCB[n][m + 1] == 3)) {//目标位置存在棋子（没有考虑狮子和老虎在河边）
+                                    if (
+                                            CCA[n][m + 1] == 'E' ||
+                                                    CCA[n][m + 1] == 'L' ||
+                                                    CCA[n][m + 1] == 'T' ||
+                                                    CCA[n][m + 1] == 'P' ||
+                                                    CCA[n][m + 1] == 'W' ||
+                                                    CCA[n][m + 1] == 'D' ||
+                                                    CCA[n][m + 1] == 'C' ||
+                                                    CCA[n][m + 1] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if ((n == 0 && m + 1 == 2) ||
+                                            (n == 0 && m + 1 == 4) ||
+                                            (n == 1 && m + 1 == 3)) {//目标位置为己方陷阱且有对方棋子
+                                        if (Rank(chessB, (CCA[n][m + 1])) > 0) {
+                                            remainingTime = timerTask.getRemainingTime(timeout);
+                                            System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                            legal = false;
+                                            newX = n;
+                                            newY = m + 1;
+                                            break label;
+                                        }
+                                    }//无法向上进入己方陷阱
+
+                                    else if (Rank(chessA, (CCA[n][m + 1])) == 8 &&
+                                            (Rank(chessB, (CCA[n][m])) == 1)) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m + 1;
+                                        break label;
+                                    }//鼠的特例
+
+                                    else if (Rank(chessA, (CCA[n][m + 1])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][m + 1]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = m + 1;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                }
+                                //虎和狮傍水的特例
+                                else if ((Rank(chessA, (CCA[n][m])) == 6 ||
+                                        Rank(chessA, (CCA[n][m])) == 7) &&
+                                        origin.OCB[n][m + 1] == 3 &&
+                                        CCA[n][m + 3] != 'O') {
+                                    int targetY = m + 3;
+                                    if (
+                                            CCA[n][targetY] == 'E' ||
+                                                    CCA[n][targetY] == 'L' ||
+                                                    CCA[n][targetY] == 'T' ||
+                                                    CCA[n][targetY] == 'P' ||
+                                                    CCA[n][targetY] == 'W' ||
+                                                    CCA[n][targetY] == 'D' ||
+                                                    CCA[n][targetY] == 'C' ||
+                                                    CCA[n][targetY] == 'R'
+                                    ) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("目标位置被己方棋子占用，重新动作");
+                                    }//目标位置不能有自己的棋子
+
+                                    else if (Rank(chessA, (CCA[n][targetY])) <= Rank(chessB, (CCA[n][m]))) {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("你将吃掉对方的棋子： " + Name(CCA[n][targetY]));
+                                        legal = false;
+                                        newX = n;
+                                        newY = targetY;
+                                        break label;
+                                    }//其他自然吃
+
+                                    else {
+                                        remainingTime = timerTask.getRemainingTime(timeout);
+                                        System.out.println("棋子等级不足，无法吃掉对方棋子");
+                                    }
+                                } else {
+                                    System.out.println("你将棋子落在（" + n + '，' + (m + 1) + "）处");
+                                    legal = false;
+                                    newX = n;
+                                    newY = m + 1;
+                                }
+                            }
+                        }
+                    }
+                        if (inTime) {
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("是否选定此操作？是/否");
+                            System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        } else {
+                            break;
+                        }
+
+                        Prove = new StringBuilder(scanner.nextLine());
+                    remainingTime = timerTask.getRemainingTime(timeout);
+                        if (Prove.toString().equals("停止")) {
+                            try {
+                                // 暂停计时器
+                                timerTask.pause();
+                            } catch (InterruptedException e) {
+                                // 处理中断异常
+                            }
+                        } else if (Prove.toString().equals("继续")) {
+                            // 继续计时器
+                            timerTask.resume();
+                        } else if (Prove.toString().equals("重开")) {
+                            System.out.println("玩家要求重新开始");
+                            continue outerLoop; // 跳出外部循环
+                        } else if (remainingTime <= 0) {
+                            // 计时器已超时，执行判负逻辑
+                            Gameover.set("已结束");
+                            break;
+                        } else if (Prove.toString().equals("是")) {
+                            prove = true;
+                            //将当前棋盘存储到高能级
+                            higher = CCA;
+                            higher[newX][newY] = CCA[n][m];
+                            higher[n][m] = 'O';
+                            //进行棋盘刷新
+                            CCA = higher;
+                            timerTask.cancel();
+
+                        } else {
+                            legal = true;
+                            prove = false;
+                            remainingTime = timerTask.getRemainingTime(timeout);
+                            System.out.println("您最终选择的棋子" + Name(CCA[n][m]) + "位于坐标（" + n + "," + m + "）处，您想怎么做？上/下/左/右");
+                            System.out.println("剩余时间：" + remainingTime / 1000 + "秒");
+                        }
+                    }
+                //进行输赢判定
+                //Game Termination: A player loses the game if one of the following happens:
+                //The den is entered by his/her opponents.
+                remainingTime = timerTask.getRemainingTime(timeout);
+                if (remainingTime <= 0) {
+                    // 计时器已超时，执行判负逻辑
+                    System.out.println("先手胜利，由于后手时间到了");
+                    Gameover.set("已结束");
+
+                    input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "先手胜利，由于后手时间到了");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                if (Character.isUpperCase(CCA[8][3]) && CCA[8][3] != 'O') {
+                    System.out.println("后手胜利，由于先手兽穴被攻破");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "后手胜利，由于先手兽穴被攻破");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                if (Character.isLowerCase(CCA[0][3])) {
+                    System.out.println("先手胜利，由于后手兽穴被攻破");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "先手胜利，由于后手兽穴被攻破");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+                //All of his/her pieces are captured and he/her is unable to do any movement
+
+                isValid = true;
+                hasAdjacentLowerCase = false;
+
+                for (int i = 0; i < CCA.length; i++) {
+                    for (int j = 0; j < CCA[i].length; j++) {
+                        char currentChar = CCA[i][j];
+
+                        if (Character.isUpperCase(currentChar) && currentChar != 'O') {
+                            if (!((i == 8 && j == 2) || (i == 7 && j == 3) || (i == 8 && j == 4))) {
+                                isValid = false;
+                            }
+
+                            if ((i - 1 >= 0 && Character.isLowerCase(CCA[i - 1][j]))
+                                    || (i + 1 < CCA.length && Character.isLowerCase(CCA[i + 1][j]))
+                                    || (j - 1 >= 0 && Character.isLowerCase(CCA[i][j - 1]))
+                                    || (j + 1 < CCA[i].length && Character.isLowerCase(CCA[i][j + 1]))) {
+                                hasAdjacentLowerCase = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isValid && hasAdjacentLowerCase) {
+                    System.out.println("先手胜利，由于所有后手棋子被捕获");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "先手胜利，由于所有后手棋子被捕获");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                }
+
+                isValid = true;
+                hasAdjacentUpperCase = false;
+
+                for (int i = 0; i < CCA.length; i++) {
+                    for (int j = 0; j < CCA[i].length; j++) {
+                        char currentChar = CCA[i][j];
+
+                        if (Character.isLowerCase(currentChar) && currentChar != 'O') {
+                            if (!((i == 8 && j == 2) || (i == 7 && j == 3) || (i == 8 && j == 4))) {
+                                isValid = false;
+                            }
+
+                            if ((i - 1 >= 0 && Character.isUpperCase(CCA[i - 1][j]))
+                                    || (i + 1 < CCA.length && Character.isUpperCase(CCA[i + 1][j]))
+                                    || (j - 1 >= 0 && Character.isUpperCase(CCA[i][j - 1]))
+                                    || (j + 1 < CCA[i].length && Character.isUpperCase(CCA[i][j + 1]))) {
+                                hasAdjacentUpperCase = true;
+                            }
+                        }
+                    }
+                }
+
+                if (isValid && hasAdjacentUpperCase) {
+                    System.out.println("后手胜利，由于所有先手棋子被捕获");
+                    Gameover.set("已结束");
+                    System.out.println("将现状固定为存档？存档/否");
+                    input = scanner.nextLine();
+                    if (input.equals("存档")) {
+                        level = new StringBuilder(Integer.toString(Level));
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            writer.write(Identitycode + "\n");
+                            writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+
+                        try {
+                            FileWriter writer = new FileWriter("cache.txt", true);
+                            for (char[] chars : CCA) {
+                                for (char aChar : chars) {
+                                    writer.write(aChar);
+                                }
+                                writer.write("\n");
+                            }
+                            writer.close();
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                        LocalDateTime now1 = LocalDateTime.now();
+                        DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                        String currentTime1 = now1.format(formatter1);
+                        // 创建新的txt文件并保存游戏状态或其他数据
+                        String fileName = "save_" + ' ' + nameA
+                                + ' ' + nameB
+                                + ' ' + currentTime1
+                                + ' ' + Gameover + ".txt";
+
+                        try {
+                            File file = new File(fileName);
+
+                            if (file.createNewFile()) {
+                                System.out.println("已存档。存档名为： "
+                                        + "save_" + ' ' + nameA
+                                        + ' ' + nameB
+                                        + ' ' + currentTime1
+                                        + ' ' + Gameover + ".txt");
+                            } else {
+                                System.out.println("文件已存在：" + file.getAbsolutePath());
+                            }
+                        } catch (IOException e) {
+                            System.out.println("创建文件时出现错误：" + e.getMessage());
+                        }
+                        try (FileWriter writer = new FileWriter(fileName , true);
+                             FileReader reader = new FileReader("cache.txt")) {
+                            // 复制 cache.txt 的内容到存档文件中
+                            char[] buffer = new char[2097152];
+                            int bytesRead;
+                            while ((bytesRead = reader.read(buffer)) != -1) {
+                                writer.write(buffer, 0, bytesRead);
+                            }
+                            writer.write('\n' + "后手胜利，由于所有先手棋子被捕获");
+                            writer.write("Gameover at time : " + currentTime1);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    break;
+                } else {
+                    System.out.println("未分胜负，游戏继续");
+                }
+
+                //存盘
+                level = new StringBuilder(Integer.toString(Level));
+                try {
+                    FileWriter writer = new FileWriter("cache.txt", true);
+                    writer.write(Identitycode + "\n");
+                    writer.write(direction.toString() + ' ' + level.toString() + ' ' + chessPiece + ' ' + action + "\n");
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                try {
+                    FileWriter writer = new FileWriter("cache.txt", true);
+                    for (char[] chars : CCA) {
+                        for (char aChar : chars) {
+                            writer.write(aChar);
+                        }
+                        writer.write("\n");
+                    }
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                Identitycode++;
+
+                System.out.println("将现状固定为存档？存档/否");
+                input = scanner.nextLine();
+                if (input.equals("存档")) {
+                    LocalDateTime now1 = LocalDateTime.now();
+                    DateTimeFormatter formatter1 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                    String currentTime1 = now1.format(formatter1);
+                    // 创建新的txt文件并保存游戏状态或其他数据
+                    String fileName = "save_" + ' ' + nameA
+                            + ' ' + nameB
+                            + ' ' + currentTime1
+                            + ' ' + Gameover + ".txt";
+
+                    try {
+                        File file = new File(fileName);
+
+                        if (file.createNewFile()) {
+                            System.out.println("已存档。存档名为： "
+                                    + "save_" + ' ' + nameA
+                                    + ' ' + nameB
+                                    + ' ' + currentTime1
+                                    + ' ' + Gameover + ".txt");
+                        } else {
+                            System.out.println("文件已存在：" + file.getAbsolutePath());
+                        }
+                    } catch (IOException e) {
+                        System.out.println("创建文件时出现错误：" + e.getMessage());
+                    }
+                    try (FileWriter writer = new FileWriter(fileName);
+                         FileReader reader = new FileReader("cache.txt")) {
+                        // 复制 cache.txt 的内容到存档文件中
+                        char[] buffer = new char[2097152];
+                        int bytesRead;
+                        while ((bytesRead = reader.read(buffer)) != -1) {
+                            writer.write(buffer, 0, bytesRead);
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            timerTask.cancel();
+            System.out.println("游戏结束");
+
+            LocalDateTime now2 = LocalDateTime.now();
+            DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            String currentTime2 = now2.format(formatter2);
+            try {
+                FileWriter writer = new FileWriter("cache.txt", true);
+                writer.write("Gameover at time : " + currentTime2);
+                writer.close();
+            } catch (
+                    IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
